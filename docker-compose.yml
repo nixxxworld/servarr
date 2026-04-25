@@ -131,8 +131,6 @@ services:
     <<: *common-keys
     container_name: doplarr
     image: ghcr.io/hotio/doplarr:latest
-    ports:
-      - 8080:80
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/doplarr:/config
