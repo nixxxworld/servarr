@@ -121,20 +121,20 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/seerr:/config
-      - /data:/data
       
 ###############################################
-# DOPLARR - Request Bot
+# REQUESTRR - Request Bot
 ###############################################
 
-  doplarr:
+  requestrr:
     <<: *common-keys
-    container_name: doplarr
-    image: ghcr.io/hotio/doplarr:latest
+    container_name: requestrr
+    image: ghcr.io/hotio/requestrr:latest
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/doplarr:/config
-      - /data:/data
+    ports:
+      - 4545:4545
       
 ###############################################
 # PLEX - Media Server
@@ -144,13 +144,25 @@ services:
     <<: *common-keys
     container_name: plex
     image: ghcr.io/hotio/plex:latest
+    network_mode: host
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/plex:/config
       - /data/media:/data/media:ro #read-only
-    ports:
-      - 32400:32400
 
+###################################
+# FLARESOLVERR - Cloudflare Bypass
+###################################
+
+  flaresolverr:
+    <<: *common-keys
+    container_name: flaresolverr
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    ports:
+      - 8191:8191
+    environment:
+      - LOG_LEVEL=info
+      
 ###############################################
 # ARR Stack Dedicated Network
 ###############################################
