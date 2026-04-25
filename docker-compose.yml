@@ -9,7 +9,7 @@ x-common-keys: &common-keys
     environment:
       PUID: 1000
       PGID: 1000
-      TZ: Europe/London
+      TZ: America/Toronto
     dns:
       - 1.1.1.1
       - 1.0.0.1
