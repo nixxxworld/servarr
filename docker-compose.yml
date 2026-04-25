@@ -132,7 +132,7 @@ services:
     image: ghcr.io/hotio/requestrr:latest
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /docker/appdata/doplarr:/config
+      - /docker/appdata/requestrr:/config
     ports:
       - 4545:4545
       
