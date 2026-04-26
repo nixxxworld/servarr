@@ -176,7 +176,21 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/tautulli:/config 
-      
+
+###############################################
+# HOMEPAGE - Dashboard
+###############################################
+
+  homepage:
+    <<: *common-keys
+    container_name: homepage
+    image: ghcr.io/gethomepage/homepage:latest
+    ports:
+      - 3000:3000
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/homepage:/config 
+            
 ###############################################
 # ARR Stack Dedicated Network
 ###############################################
