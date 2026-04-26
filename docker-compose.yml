@@ -189,7 +189,9 @@ services:
       - 3000:3000
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /docker/appdata/homepage:/config 
+      - /docker/appdata/homepage:/config
+    environment:
+      - HOMEPAGE_ALLOWED_HOSTS=gethomepage.dev # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
             
 ###############################################
 # ARR Stack Dedicated Network
