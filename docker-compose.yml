@@ -157,7 +157,7 @@ services:
   recyclarr:
     <<: *common-keys
     container_name: recyclarr
-    image: ghcr.io/recyclarr/recyclarr:lastest
+    image: ghcr.io/recyclarr/recyclarr:8
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/recyclarr:/config 
