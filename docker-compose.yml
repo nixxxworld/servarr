@@ -151,15 +151,18 @@ services:
       - /data/media:/data/media:ro #read-only
 
 ###################################
-# RECYCLARR - Custom ARR Profiles
+# PROFILARR - Import Quailty Profiles
 ###################################
 
-  recyclarr:
+  profilarr:
     <<: *common-keys
-    container_name: recyclarr
-    image: ghcr.io/recyclarr/recyclarr:8
-     volumes:
-      - ./config:/config
+    container_name: profilarr
+    image: ghcr.io/dictionarry-hub/profilarr:latest
+    ports:
+      - 6868:6868
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/profilarr:/config 
            
 ###################################
 # FLARESOLVERR - Cloudflare Bypass
