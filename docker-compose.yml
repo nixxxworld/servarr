@@ -158,10 +158,9 @@ services:
     <<: *common-keys
     container_name: recyclarr
     image: ghcr.io/recyclarr/recyclarr:8
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /docker/appdata/recyclarr:/config 
-      
+     volumes:
+      - ./config:/config
+           
 ###################################
 # FLARESOLVERR - Cloudflare Bypass
 ###################################
