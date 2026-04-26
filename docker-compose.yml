@@ -151,6 +151,18 @@ services:
       - /data/media:/data/media:ro #read-only
 
 ###################################
+# RECYCLARR - Custom ARR Profiles
+###################################
+
+  recyclarr:
+    <<: *common-keys
+    container_name: recyclarr
+    image: ghcr.io/recyclarr/recyclarr:lastest
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/recyclarr:/config 
+      
+###################################
 # FLARESOLVERR - Cloudflare Bypass
 ###################################
 
@@ -162,7 +174,7 @@ services:
       - 8191:8191
     environment:
       - LOG_LEVEL=info
-
+      
 ###############################################
 # TAUTULLI - Monitor Media Server
 ###############################################
