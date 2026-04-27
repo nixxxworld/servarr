@@ -189,7 +189,6 @@ services:
       - 9191:9191
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /docker/appdata/dispatcharr:/config 
       - /data:/data
     environment:
       - DISPATCHARR_ENV=aio
@@ -208,8 +207,7 @@ services:
     ports:
       - 8000:8000
     volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /docker/appdata/reclaimerr:/config 
+      - /etc/localtime:/etc/localtime:ro 
       
 ###############################################
 # TAUTULLI - Monitor Media Server
