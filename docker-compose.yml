@@ -157,7 +157,7 @@ services:
   profilarr:
     <<: *common-keys
     container_name: profilarr
-    image: ghcr.io/dictionarry-hub/profilarr:latest
+    image: santiagosayshey/profilarr:latest
     ports:
       - 6868:6868
     volumes:
@@ -176,6 +176,40 @@ services:
       - 8191:8191
     environment:
       - LOG_LEVEL=info
+      
+###############################################
+# DISPATCHARR - IPTV Companion
+###############################################
+
+  dispatcharr:
+    <<: *common-keys
+    container_name: dispatcharr
+    image: ghcr.io/dispatcharr/dispatcharr:latest
+    ports:
+      - 9191:9191
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/dispatcharr:/config 
+      - /data:/data
+    environment:
+      - DISPATCHARR_ENV=aio
+      - REDIS_HOST=localhost
+      - CELERY_BROKER_URL=redis://localhost:6379/0
+      - DISPATCHARR_LOG_LEVEL=info
+      
+###############################################
+# RECLAIMERR - Manage Your Media
+###############################################
+
+  reclaimerr:
+    <<: *common-keys
+    container_name: reclaimerr
+    image: ghcr.io/jessielw/reclaimerr:latest
+    ports:
+      - 8000:8000
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/reclaimerr:/config 
       
 ###############################################
 # TAUTULLI - Monitor Media Server
