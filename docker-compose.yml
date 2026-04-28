@@ -197,17 +197,32 @@ services:
       - DISPATCHARR_LOG_LEVEL=info
       
 ###############################################
-# RECLAIMERR - Manage Your Media
+# MAINTAINERR - Manage Your Media
 ###############################################
 
-  reclaimerr:
+  maintainerr:
     <<: *common-keys
-    container_name: reclaimerr
-    image: ghcr.io/jessielw/reclaimerr:latest
+    container_name: maintainerr
+    image: ghcr.io/maintainerr/maintainerr:latest
     ports:
-      - 8000:8000
+      - 6246:6246
     volumes:
       - /etc/localtime:/etc/localtime:ro 
+      - /data:/opt/data
+
+###############################################
+# CLEANUPARR - Keep Everything Clean
+###############################################
+
+  cleanuparr:
+    <<: *common-keys
+    container_name: cleanuparr
+    image: ghcr.io/cleanuparr/cleanuparr:latest
+    ports:
+      - 11011:11011
+    volumes:
+      - /etc/localtime:/etc/localtime:ro 
+      - /docker/appdata/cleanuparr:/config   
       
 ###############################################
 # TAUTULLI - Monitor Media Server
