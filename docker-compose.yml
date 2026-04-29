@@ -1,266 +1,403 @@
 ###############################################
-# Common Keys for all apps
+# Network For The Servarr
 ###############################################
 
-x-common-keys: &common-keys
-    restart: unless-stopped
-    logging:
-      driver: json-file
-    environment:
-      PUID: 1000
-      PGID: 1000
-      TZ: America/Toronto
-    dns:
-      - 1.1.1.1
-      - 1.0.0.1
+networks:
+  servarrnetwork:
+    name: servarrnetwork
+    ipam:
+      config:
+        - subnet: 172.39.0.0/24
 
 services:
-###############################################
-# RADARR - Movies
-###############################################
+  ###############################################
+  # Gluetun - VPN
+  ###############################################
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      servarrnetwork:
+        ipv4_address: ${SET_IP_GLUETUN}
+    ports:
+      - 8080:8080 # qbittorrent web interface
+      - 6881:6881 # qbittorrent torrent port
+      - 9696:9696 # prowlarr
+      - 8191:8191 # flaresolverr
+    volumes:
+      - ./gluetun:/gluetun
+    # Make a '.env' file in the same directory as compose file.
+    env_file:
+      - .env
+    healthcheck:
+      test: ping -c 1 www.google.com || exit 1
+      interval: 20s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  ###############################################
+  # DEUNHEALTH - Monitors containers
+  ###############################################
+  deunhealth:
+    image: qmcgaw/deunhealth
+    container_name: deunhealth
+    network_mode: "none"
+    environment:
+      - LOG_LEVEL=info
+      - HEALTH_SERVER_ADDRESS=127.0.0.1:9999
+      - TZ=${TZ}
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  ###############################################
+  # RADARR - Movies
+  ###############################################
   radarr:
-    <<: *common-keys
     container_name: radarr
     image: ghcr.io/hotio/radarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     ports:
       - 7878:7878
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/radarr:/config
       - /data:/data
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_RADARR}
 
-###############################################
-# SONARR - TV Shows
-###############################################
-
+  ###############################################
+  # SONARR - TV Shows
+  ###############################################
   sonarr:
-    <<: *common-keys
     container_name: sonarr
     image: ghcr.io/hotio/sonarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     ports:
       - 8989:8989
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/sonarr:/config
       - /data:/data
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_SONARR}
 
-###############################################
-# LIDARR - Music
-###############################################
-
+  ###############################################
+  # LIDARR - Music
+  ###############################################
   lidarr:
-    <<: *common-keys
     container_name: lidarr
     image: ghcr.io/hotio/lidarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     ports:
       - 8686:8686
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/lidarr:/config
       - /data:/data
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_LIDARR}
 
-###############################################
-# BAZARR - Subtitles
-###############################################
-
+  ###############################################
+  # BAZARR - Subtitles
+  ###############################################
   bazarr:
-    <<: *common-keys
     container_name: bazarr
     image: ghcr.io/hotio/bazarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     ports:
       - 6767:6767
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/bazarr:/config
       - /data/media:/data/media
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_BAZARR}
 
-###############################################
-# PROWLARR - Indexer Manager
-###############################################
-
+  ###############################################
+  # PROWLARR - Indexer Manager
+  ###############################################
   prowlarr:
-    <<: *common-keys
     container_name: prowlarr
     image: ghcr.io/hotio/prowlarr:latest
-    ports:
-      - 9696:9696
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/prowlarr:/config
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    network_mode: service:gluetun
 
-###############################################
-# QBITTORRENT - Downloader
-###############################################
-
+  ###############################################
+  # QBITTORRENT - Downloader
+  ###############################################
   qbittorrent:
-    <<: *common-keys
     container_name: qbittorrent
     image: ghcr.io/hotio/qbittorrent:latest
-    ports:
-      - 8080:8080
-      - 6881:6881
-      - 6881:6881/udp
+    restart: unless-stopped
+    labels:
+      - deunhealth.restart.on.unhealthy=true
     environment:
-      - WEBUI_PORT=8080
-      - TORRENTING_PORT=6881
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8080 # must match "qbittorrent web interface" port number in gluetun's service above
+      - TORRENTING_PORT=${FIREWALL_VPN_INPUT_PORTS} # airvpn forwarded port, pulled from .env
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/qbittorrent:/config
       - /data:/data
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    network_mode: service:gluetun
+    healthcheck:
+      test: ping -c 1 www.google.com || exit 1
+      interval: 60s
+      retries: 3
+      start_period: 20s
+      timeout: 10s
 
-###############################################
-# SEERR - Request Manager
-###############################################
-
+  ###############################################
+  # SEERR - Request Manager
+  ###############################################
   seerr:
-    <<: *common-keys
     container_name: seerr
     image: ghcr.io/hotio/seerr:latest
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=debug
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     ports:
       - 5055:5055
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/seerr:/config
-      
-###############################################
-# REQUESTRR - Request Bot
-###############################################
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/status || exit 1
+      start_period: 20s
+      timeout: 3s
+      interval: 15s
+      retries: 3
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_SEERR}
 
+  ###############################################
+  # REQUESTRR - Request Bot
+  ###############################################
   requestrr:
-    <<: *common-keys
     container_name: requestrr
     image: ghcr.io/hotio/requestrr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     ports:
       - 4545:4545
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/requestrr:/config
-      
-###############################################
-# PLEX - Media Server
-###############################################
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_REQUESTRR}
 
+  ###############################################
+  # PLEX - Media Server
+  ###############################################
   plex:
-    <<: *common-keys
     container_name: plex
     image: ghcr.io/hotio/plex:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     network_mode: host
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/plex:/config
       - /data/media:/data/media:ro #read-only
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_PLEX}
 
-###################################
-# PROFILARR - Import Quailty Profiles
-###################################
-
+  ###################################
+  # PROFILARR - Import Quailty Profiles
+  ###################################
   profilarr:
-    <<: *common-keys
     container_name: profilarr
     image: santiagosayshey/profilarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     ports:
       - 6868:6868
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /docker/appdata/profilarr:/config 
-           
-###################################
-# FLARESOLVERR - Cloudflare Bypass
-###################################
+      - /docker/appdata/profilarr:/config
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_PROFILARR}
 
+  ###################################
+  # FLARESOLVERR - Cloudflare Bypass
+  ###################################
   flaresolverr:
-    <<: *common-keys
     container_name: flaresolverr
     image: ghcr.io/flaresolverr/flaresolverr:latest
-    ports:
-      - 8191:8191
+    restart: unless-stopped
     environment:
-      - LOG_LEVEL=info
-      
-###############################################
-# DISPATCHARR - IPTV Companion
-###############################################
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - TZ=${TZ}
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+      network_mode: service:gluetun
 
+  ###############################################
+  # DISPATCHARR - IPTV Companion
+  ###############################################
   dispatcharr:
-    <<: *common-keys
     container_name: dispatcharr
     image: ghcr.io/dispatcharr/dispatcharr:latest
-    ports:
-      - 9191:9191
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /data:/data
+    restart: unless-stopped
     environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
       - DISPATCHARR_ENV=aio
       - REDIS_HOST=localhost
       - CELERY_BROKER_URL=redis://localhost:6379/0
       - DISPATCHARR_LOG_LEVEL=info
-      
-###############################################
-# MAINTAINERR - Manage Your Media
-###############################################
-
-  maintainerr:
-    <<: *common-keys
-    container_name: maintainerr
-    image: ghcr.io/maintainerr/maintainerr:latest
     ports:
-      - 6246:6246
+      - 9191:9191
     volumes:
-      - /etc/localtime:/etc/localtime:ro 
+      - /etc/localtime:/etc/localtime:ro
+      - /data/dispatcharr:/data
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_DISPATCHARR}
+
+  ###############################################
+  # RECLAIMERR - Manage Your Media
+  ###############################################
+  reclaimerr:
+    container_name: reclaimerr
+    image: ghcr.io/jessielw/reclaimerr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 8000:8000
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
       - /data:/opt/data
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_RECLAIMERR}
 
-###############################################
-# CLEANUPARR - Keep Everything Clean
-###############################################
-
+  ###############################################
+  # CLEANUPARR - Keep Everything Clean
+  ###############################################
   cleanuparr:
-    <<: *common-keys
     container_name: cleanuparr
     image: ghcr.io/cleanuparr/cleanuparr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     ports:
       - 11011:11011
     volumes:
-      - /etc/localtime:/etc/localtime:ro 
-      - /docker/appdata/cleanuparr:/config   
-      
-###############################################
-# TAUTULLI - Monitor Media Server
-###############################################
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/cleanuparr:/config
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_CLEANUPARR}
 
+  ###############################################
+  # TAUTULLI - Monitor Media Server
+  ###############################################
   tautulli:
-    <<: *common-keys
     container_name: tautulli
     image: ghcr.io/hotio/tautulli:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     ports:
       - 8181:8181
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /docker/appdata/tautulli:/config 
+      - /docker/appdata/tautulli:/config
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_TAUTULLI}
 
-###############################################
-# HOMEPAGE - Dashboard
-###############################################
-
+  ###############################################
+  # HOMEPAGE - Dashboard
+  ###############################################
   homepage:
-    <<: *common-keys
     container_name: homepage
     image: ghcr.io/gethomepage/homepage:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - HOMEPAGE_ALLOWED_HOSTS=gethomepage.dev
     ports:
       - 3000:3000
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/homepage:/config
-    environment:
-      - HOMEPAGE_ALLOWED_HOSTS=gethomepage.dev # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
-            
-###############################################
-# ARR Stack Dedicated Network
-###############################################
-
-networks:
-  default:
-    name: arr_network
-
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_HOMEPAGE}
 ###############################################
 ###############################################
