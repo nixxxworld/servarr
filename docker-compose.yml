@@ -22,7 +22,7 @@ services:
       - /dev/net/tun:/dev/net/tun
     networks:
       servarrnetwork:
-        ipv4_address: ${SET_IP_GLUETUN}
+        ipv4_address: ${IP_GLUETUN}
     ports:
       - 8080:8080 # qbittorrent web interface
       - 6881:6881 # qbittorrent torrent port
