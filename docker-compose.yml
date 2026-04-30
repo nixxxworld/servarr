@@ -1,5 +1,5 @@
 ###############################################
-# Network For The Servarr
+# Network For Server
 ###############################################
 
 networks:
@@ -146,6 +146,7 @@ services:
     container_name: prowlarr
     image: ghcr.io/hotio/prowlarr:latest
     restart: unless-stopped
+    network_mode: service:gluetun
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -157,7 +158,6 @@ services:
       gluetun:
         condition: service_healthy
         restart: true
-    network_mode: service:gluetun
 
   ###############################################
   # QBITTORRENT - Downloader
@@ -166,6 +166,7 @@ services:
     container_name: qbittorrent
     image: ghcr.io/hotio/qbittorrent:latest
     restart: unless-stopped
+    network_mode: service:gluetun
     labels:
       - deunhealth.restart.on.unhealthy=true
     environment:
@@ -182,7 +183,6 @@ services:
       gluetun:
         condition: service_healthy
         restart: true
-    network_mode: service:gluetun
     healthcheck:
       test: ping -c 1 www.google.com || exit 1
       interval: 60s
@@ -248,7 +248,8 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-    network_mode: host
+    ports:
+      - 32400:32400
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/plex:/config
@@ -284,6 +285,7 @@ services:
     container_name: flaresolverr
     image: ghcr.io/flaresolverr/flaresolverr:latest
     restart: unless-stopped
+    network_mode: service:gluetun
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_HTML=${LOG_HTML:-false}
@@ -293,7 +295,6 @@ services:
       gluetun:
         condition: service_healthy
         restart: true
-      network_mode: service:gluetun
 
   ###############################################
   # DISPATCHARR - IPTV Companion
