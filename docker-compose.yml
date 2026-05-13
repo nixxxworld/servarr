@@ -1,0 +1,633 @@
+###############################################
+#      ___
+#     / __| ___ _ ___ ____ _ _ _ _ _
+#     \__ \/ -_) '_\ V / _` | '_| '_|
+#     |___/\___|_|  \_/\__,_|_| |_|
+#
+#       ___
+#      / __|___ _ __  _ __  ___ ___ ___
+#     | (__/ _ \ '  \| '_ \/ _ (_-</ -_)
+#      \___\___/_|_|_| .__/\___/__/\___|
+#                    |_|
+###############################################
+#               ⣀⣠⣤⣤⣶⣶⣶⣶⣶⣶⣠⣤⣤⣀⣀
+#           ⣀⣴⣾⠿⠟⠛⠛⠉⠉⠉⠉⠉⠛⠛⠛⠿⠿⡿⠛⢿⣿⣷⣤
+#        ⣠⡾⠟⠉                    ⣸⣿⠉⠁
+#      ⢀⡾⠋                       ⣿⡟
+#     ⢠⠟                        ⣿⠁
+#     ⠋   ⢀⣤⣤⣤⣶⣶⣆⢤⣤⣀⣀       ⣸⡟
+#        ⢸⡿⠋⠙⢿⣿⣿⣿⣻⣿⣿⡇       ⣿⠇
+#        ⢸⡇⢀⠐⢻⣿⣻⣷⡽⣿⣷       ⢸⣿
+#         ⠿⣃⠹⠿⠗⣿⣷⣻⣿⡽⣿⣧    ⣼⡇
+#         ⣴⡏⣁⢀⠲⣿⣿⣷⢻⣿⡽⣿  ⢀⣿⠁
+#         ⣿⣿⠁⣉⣡⣿⣿⣿⣏⣿⣿⣿⣼⡿
+#       ⢰⡿⣿⣿⣿⣿⣿⣿⣿⣿⣽⣿⣿⣿⡇
+#       ⢀⣿⣿⣿⣿⣿⣿⣿⣿⠟⠛⠛⠛⠛⠛⠆
+#       ⠈⠛⠘⠛⠛⠛⠉⠁
+###############################################
+# Network For Server
+###############################################
+
+networks:
+  servarrnetwork:
+    name: servarrnetwork
+    ipam:
+      config:
+        - subnet: 172.X.0.X/24
+
+services:
+  ###############################################
+  # Gluetun - VPN
+  ###############################################
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_GLUETUN}
+    ports:
+      - 8080:8080 # qbittorrent web interface
+      - 6881:6881 # qbittorrent torrent port
+      - 6789:6789 # NZBGET
+      - 9696:9696 # prowlarr
+      - 8191:8191 # byparr
+    volumes:
+      - ./gluetun:/gluetun
+    # Make a '.env' file in the same directory as compose file.
+    env_file:
+      - .env
+    healthcheck:
+      test: ping -c 1 www.google.com || exit 1
+      interval: 20s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  ###############################################
+  # DEUNHEALTH - Monitors containers
+  ###############################################
+  deunhealth:
+    image: qmcgaw/deunhealth
+    container_name: deunhealth
+    network_mode: "none"
+    environment:
+      - LOG_LEVEL=info
+      - HEALTH_SERVER_ADDRESS=127.0.0.1:9999
+      - TZ=${TZ}
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  ###############################################
+  # RADARR - Movies
+  ###############################################
+  radarr:
+    container_name: radarr
+    image: ghcr.io/hotio/radarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 7878:7878
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/radarr:/config
+      - /data:/data
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_RADARR}
+
+  ###############################################
+  # SONARR - TV Shows
+  ###############################################
+  sonarr:
+    container_name: sonarr
+    image: ghcr.io/hotio/sonarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 8989:8989
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/sonarr:/config
+      - /data:/data
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_SONARR}
+
+  ###############################################
+  # LIDARR - Music
+  ###############################################
+  lidarr:
+    container_name: lidarr
+    image: ghcr.io/hotio/lidarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 8686:8686
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/lidarr:/config
+      - /data:/data
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_LIDARR}
+
+  ###############################################
+  # READARR - Books
+  ###############################################
+  readarr:
+    container_name: readarr
+    image: ghcr.io/pennydreadful/bookshelf:hardcover
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 8787:8787
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/readarr:/config
+      - /data:/data
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_READARR}
+
+  ###############################################
+  # BAZARR - Subtitles
+  ###############################################
+  bazarr:
+    container_name: bazarr
+    image: ghcr.io/hotio/bazarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 6767:6767
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/bazarr:/config
+      - /data/media:/data/media
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_BAZARR}
+
+  ###############################################
+  # PROWLARR - Indexer Manager
+  ###############################################
+  prowlarr:
+    container_name: prowlarr
+    image: ghcr.io/hotio/prowlarr:latest
+    restart: unless-stopped
+    network_mode: service:gluetun
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/prowlarr:/config
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+
+  ###############################################
+  # NZBGET - NZB Downloader
+  ###############################################
+  nzbget:
+    container_name: nzbget
+    image: ghcr.io/hotio/nzbget:latest
+    restart: unless-stopped
+    network_mode: service:gluetun
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/nzbget:/config
+      - /data:/data
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+
+  ###############################################
+  # QBITTORRENT - Torrents Downloader
+  ###############################################
+  qbittorrent:
+    container_name: qbittorrent
+    image: ghcr.io/hotio/qbittorrent:latest
+    restart: unless-stopped
+    network_mode: service:gluetun
+    labels:
+      - deunhealth.restart.on.unhealthy=true
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8080 # must match "qbittorrent web interface" port number in gluetun's service above
+      - TORRENTING_PORT=${FIREWALL_VPN_INPUT_PORTS} # airvpn forwarded port, pulled from .env
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/qbittorrent:/config
+      - /data:/data
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    healthcheck:
+      test: ping -c 1 www.google.com || exit 1
+      interval: 60s
+      retries: 3
+      start_period: 20s
+      timeout: 10s
+
+  ###############################################
+  # SEERR - Request Manager
+  ###############################################
+  seerr:
+    container_name: seerr
+    image: ghcr.io/hotio/seerr:latest
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=debug
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 5055:5055
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/seerr:/config
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:5055 || exit 1
+      start_period: 20s
+      timeout: 3s
+      interval: 15s
+      retries: 3
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_SEERR}
+
+  ###############################################
+  # MUSICSEERR - Request Manager For Music
+  ###############################################
+  musicseerr:
+    container_name: musicseerr
+    image: ghcr.io/habirabbu/musicseerr:latest
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=debug
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - PORT=8688
+    ports:
+      - "8688:8688"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/musicseerr:/config
+      - /docker/appdata/musicseerr/cache:/app/cache
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8688/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_MUSICSEERR}
+
+  ###############################################
+  # LIBRESEERR - Request Manager For Books
+  ###############################################
+  libreseerr:
+    container_name: libreseerr
+    image: ghcr.io/zamnzim/libreseerr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - "5000:5000"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/libreseerr:/app/data
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_LIBRESEERR}
+
+  ###############################################
+  # WIZARR - Automatic User Invitation
+  ###############################################
+  wizarr:
+    container_name: wizarr
+    image: ghcr.io/wizarrrr/wizarr
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - DISABLE_BUILTIN_AUTH=false
+      - TZ=${TZ}
+    ports:
+      - 5690:5690
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/wizarr:/config
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_WIZARR}
+
+  ###############################################
+  # REQUESTRR - Request Bot
+  ###############################################
+  requestrr:
+    container_name: requestrr
+    image: ghcr.io/hotio/requestrr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 4545:4545
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/requestrr:/config
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_REQUESTRR}
+
+  ###############################################
+  # PLEX - Media Server
+  ###############################################
+  plex:
+    container_name: plex
+    image: ghcr.io/hotio/plex:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 32400:32400
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/plex:/config
+      - /data/media:/data/media:ro #read-only
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_PLEX}
+
+  ###################################
+  # PROFILARR - Import Quailty Profiles
+  ###################################
+  profilarr:
+    container_name: profilarr
+    image: santiagosayshey/profilarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 6868:6868
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/profilarr:/config
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_PROFILARR}
+
+  ###################################
+  # BYPARR - Cloudflare Bypass
+  ###################################
+  byparr:
+    container_name: byparr
+    image: ghcr.io/thephaseless/byparr:latest
+    restart: unless-stopped
+    network_mode: service:gluetun
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_HTML=${LOG_HTML:-false}
+      - TZ=${TZ}
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+
+  ###############################################
+  # DISPATCHARR - IPTV Companion
+  ###############################################
+  dispatcharr:
+    container_name: dispatcharr
+    image: ghcr.io/dispatcharr/dispatcharr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - DISPATCHARR_ENV=aio
+      - REDIS_HOST=localhost
+      - CELERY_BROKER_URL=redis://localhost:6379/0
+      - DISPATCHARR_LOG_LEVEL=info
+    ports:
+      - 9191:9191
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /data/dispatcharr:/data
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_DISPATCHARR}
+
+  ###############################################
+  # RECLAIMERR - Manage Your Media
+  ###############################################
+  reclaimerr:
+    container_name: reclaimerr
+    image: ghcr.io/jessielw/reclaimerr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - DATA_DIR=./data
+      - LOG_LEVEL=INFO
+    ports:
+      - 8000:8000
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /data/media:/media
+      - /docker/appdata/reclaimerr:/opt/data
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_RECLAIMERR}
+
+  ###############################################
+  # CLEANUPARR - Keep Everything Clean
+  ###############################################
+  cleanuparr:
+    container_name: cleanuparr
+    image: ghcr.io/cleanuparr/cleanuparr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 11011:11011
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/cleanuparr:/config
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_CLEANUPARR}
+
+  ###############################################
+  # TAUTULLI - Monitor Media Server
+  ###############################################
+  tautulli:
+    container_name: tautulli
+    image: ghcr.io/hotio/tautulli:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 8181:8181
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/tautulli:/config
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_TAUTULLI}
+
+  ###############################################
+  # DOCKHAND - DOCKER MANAGEMENT
+  ###############################################
+  dockhand:
+    container_name: dockhand
+    image: fnsys/dockhand:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 3001:3000
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/dockhand:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_DOCKHAND}
+
+  ###################################
+  # QUI - QBittorent Interface
+  ###################################
+  qui:
+    container_name: qui
+    image: ghcr.io/autobrr/qui:latest
+    restart: unless-stopped
+    ports:
+      - "7476:7476"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/qui:/config
+      - /data/media:/media
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_QUI}
+
+  ###############################################
+  # WATCHTOWER - AUTOUPDATE STACK
+  ###############################################
+  watchtower:
+    container_name: watchtower
+    image: nickfedor/watchtower
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_STOPPED=true
+      - WATCHTOWER_REVIVE_STOPPED=false
+      - WATCHTOWER_SCHEDULE=0 0 3 * * *
+      - WATCHTOWER_NOTIFICATIONS=shoutrrr
+      - WATCHTOWER_NOTIFICATION_URL=discord://token@webid
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  ###############################################
+  # GLANCE - Main Dashboard
+  ###############################################
+  glance:
+    container_name: glance
+    image: glanceapp/glance
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - MY_SECRET_TOKEN=X
+    ports:
+      - 8280:8080
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/glance:/app/config
+      - /docker/appdata/glance:/app/assets
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_GLANCE}
+
+  ###############################################
+  # HOMEPAGE - 2nd Dashboard
+  ###############################################
+  homepage:
+    container_name: homepage
+    image: ghcr.io/gethomepage/homepage:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - HOMEPAGE_ALLOWED_HOSTS=gethomepage.dev,192.168.X.X:3000
+    ports:
+      - 3000:3000
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/homepage:/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_HOMEPAGE}
+
+###############################################
+###############################################
