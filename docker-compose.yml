@@ -167,11 +167,11 @@ services:
         ipv4_address: ${IP_READARR}
 
   ###############################################
-  # BAZARR - Subtitles
+  # BAZARR+ - Subtitles
   ###############################################
   bazarr:
     container_name: bazarr
-    image: ghcr.io/hotio/bazarr:latest
+    image: ghcr.io/lavx/bazarr:latest
     restart: unless-stopped
     environment:
       - PUID=${PUID}
