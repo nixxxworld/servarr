@@ -397,9 +397,9 @@ services:
       servarrnetwork:
         ipv4_address: ${IP_PLEX}
 
-  ###################################
+  ###############################################
   # PROFILARR - Import Quailty Profiles
-  ###################################
+  ###############################################
   profilarr:
     container_name: profilarr
     image: santiagosayshey/profilarr:latest
@@ -417,9 +417,9 @@ services:
       servarrnetwork:
         ipv4_address: ${IP_PROFILARR}
 
-  ###################################
+  ###############################################
   # BYPARR - Cloudflare Bypass
-  ###################################
+  ###############################################
   byparr:
     container_name: byparr
     image: ghcr.io/thephaseless/byparr:latest
@@ -542,9 +542,9 @@ services:
       servarrnetwork:
         ipv4_address: ${IP_DOCKHAND}
 
-  ###################################
+  ###############################################
   # QUI - QBittorent Interface
-  ###################################
+  ###############################################
   qui:
     container_name: qui
     image: ghcr.io/autobrr/qui:latest
@@ -585,27 +585,26 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   ###############################################
-  # GLANCE - Main Dashboard
+  # DYNACAT - Main Dashboard
   ###############################################
-  glance:
-    container_name: glance
-    image: glanceapp/glance
+  dynacat:
+    container_name: dynacat
+    image: panonim/dynacat
     restart: unless-stopped
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - MY_SECRET_TOKEN=X
     ports:
       - 8280:8080
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /docker/appdata/glance:/app/config
-      - /docker/appdata/glance:/app/assets
+      - /docker/appdata/dynacat:/app/config
+      - /docker/appdata/dynacat:/app/assets
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       servarrnetwork:
-        ipv4_address: ${IP_GLANCE}
+        ipv4_address: ${IP_DYNACAT}
 
   ###############################################
   # HOMEPAGE - 2nd Dashboard
