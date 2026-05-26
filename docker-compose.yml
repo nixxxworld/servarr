@@ -351,7 +351,7 @@ services:
       - 5690:5690
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /docker/appdata/wizarr:/config
+      - /docker/appdata/wizarr:/data
     networks:
       servarrnetwork:
         ipv4_address: ${IP_WIZARR}
@@ -393,6 +393,8 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /docker/appdata/plex:/config
       - /data/media:/data/media:ro #read-only
+    devices:
+      - /dev/dri:/dev/dri #allows pcie to passthrough
     networks:
       servarrnetwork:
         ipv4_address: ${IP_PLEX}
@@ -402,7 +404,7 @@ services:
   ###############################################
   profilarr:
     container_name: profilarr
-    image: santiagosayshey/profilarr:latest
+    image: ghcr.io/dictionarry-hub/profilarr:latest
     restart: unless-stopped
     environment:
       - PUID=${PUID}
@@ -476,7 +478,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /data/media:/media
-      - /docker/appdata/reclaimerr:/opt/data
+      - /docker/appdata/reclaimerr:/app/data
     networks:
       servarrnetwork:
         ipv4_address: ${IP_RECLAIMERR}
@@ -550,7 +552,7 @@ services:
     image: ghcr.io/autobrr/qui:latest
     restart: unless-stopped
     ports:
-      - "7476:7476"
+      - 7476:7476
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -562,6 +564,26 @@ services:
     networks:
       servarrnetwork:
         ipv4_address: ${IP_QUI}
+
+  ###############################################
+  # AUTOBRR - QBittorent Interface
+  ###############################################
+  autobrr:
+    container_name: autobrr
+    image: ghcr.io/autobrr/autobrr:latest
+    restart: unless-stopped
+    ports:
+      - 7474:7474
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/autobrr:/config
+    networks:
+      servarrnetwork:
+        ipv4_address: ${IP_AUTOBRR}
 
   ###############################################
   # WATCHTOWER - AUTOUPDATE STACK
@@ -579,7 +601,7 @@ services:
       - WATCHTOWER_REVIVE_STOPPED=false
       - WATCHTOWER_SCHEDULE=0 0 3 * * *
       - WATCHTOWER_NOTIFICATIONS=shoutrrr
-      - WATCHTOWER_NOTIFICATION_URL=discord://token@webid
+      - WATCHTOWER_NOTIFICATION_URL=discord://TOKEN@HOOKID
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock
